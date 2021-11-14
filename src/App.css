@@ -1,9 +1,12 @@
 
 
-canvas{
-  display: block;
+.canvas1{
+  width: 360px;
+  height: 640px;
   border: dashed 1px black;
   margin: 0 auto;
+  background-image: url('https://media-public.canva.cn/k2Xu0/MAEhC6k2Xu0/1/s2.png');
+  background-size: 360px 640px;
 }
 
 #button{
@@ -15,4 +18,9 @@ canvas{
 
 video{
   display: none;
+}
+
+#rnd{
+  width: 200px;
+  height: 200px;
 }
