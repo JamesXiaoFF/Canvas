@@ -23,10 +23,15 @@ export default class App extends Component {
       x: 100,
       y: 100,
       width: 200,
-      height: 200
+      height: 200,
+      xyArray: [100, 100],
+      whArray: [200, 200],
+      isUpdating: false,
+      isPlaying: false
     }
     this.canvas1 = React.createRef()
     this.video = React.createRef()
+    this.button = React.createRef()
   }
 
   showImage = () => {
@@ -41,8 +46,18 @@ export default class App extends Component {
 
   loadVideoToCanvas = () => {
     const video = this.video.current
-    video.play()
-    //监听第一次播放
+    const button = this.button.current
+    if (!this.state.isPlaying) {
+      video.play()
+      this.setState({ isPlaying: true })
+      button.innerText = '播放'
+    }
+    else {
+      video.pause()
+      this.setState({ isPlaying: false })
+      button.innerText = '暂停'
+    }
+
     video.addEventListener('play', () => {
       this.timerCallback();
     }, false);
@@ -50,7 +65,7 @@ export default class App extends Component {
 
   timerCallback = () => {
     const video = this.video.current
-    //若不在播放则返回
+
     if (video.paused || video.ended) {
       return;
     }
@@ -64,11 +79,12 @@ export default class App extends Component {
     const video = this.video.current
     const canvas1 = this.canvas1.current
     const ctx1 = canvas1.getContext('2d')
-    //画视频的每一帧
-    ctx1.drawImage(video, this.state.x, this.state.y, this.state.width, this.state.height);
-    //画视频每一帧下面的红条
-    ctx1.fillStyle = 'rgb(255,0,0)'
-    ctx1.fillRect(this.state.x, this.state.y + this.state.height, this.state.width, 2)
+
+    if (!this.state.isUpdating) {
+      ctx1.drawImage(video, this.state.x, this.state.y, this.state.width, this.state.height);
+      ctx1.fillStyle = 'rgb(255,0,0)'
+      ctx1.fillRect(this.state.x, this.state.y + this.state.height, this.state.width, 2)
+    }
 
   }
 
@@ -79,44 +95,66 @@ export default class App extends Component {
         <div className="canvas1">
           <canvas ref={this.canvas1} width="360px" height="640px"></canvas>
           <Rnd
-            // style={{ background: "#f7c744" }}  //用于测试
+            //style={{ background: "#f7c744" }}  //用于测试
             bounds="parent"
             size={{ width: this.state.width, height: this.state.height }}
             position={{ x: this.state.x, y: this.state.y }}
-            //暂时没有弄清原理
-            onDragStart={(e, d) => {
 
+            onDragStart={(e, d) => {
+              this.setState({ isUpdating: true })
             }}
-            //拖拽结束执行
-            onDragStop={(e, d) => {
+            onDrag={(e, d) => {
               const canvas1 = this.canvas1.current
               const ctx1 = canvas1.getContext('2d')
-              ctx1.clearRect(this.state.x, this.state.y, this.state.width, this.state.height + 2);
-              this.setState({ x: d.x, y: d.y }, () => console.log(this.state));
+              const video = this.video.current
+              const y = this.state.xyArray.pop()
+              const x = this.state.xyArray.pop()
+              ctx1.clearRect(x, y, this.state.width, this.state.height + 2);
+              ctx1.drawImage(video, x + d.deltaX, y + d.deltaY, this.state.width, this.state.height);
+              ctx1.fillStyle = 'rgb(255,0,0)'
+              ctx1.fillRect(x + d.deltaX, y + d.deltaY + this.state.height, this.state.width, 2)
+              this.state.xyArray.push(x + d.deltaX, y + d.deltaY)
+            }}
+            onDragStop={(e, d) => {
+              this.setState({ x: d.x, y: d.y, isUpdating: false })
               this.computeFrame()
             }}
-            //暂时没有弄清原理
-            onResizeStart={(e, direction, ref, delta, position) => {
 
+            onResizeStart={(e, direction, ref, delta, position) => {
+              this.setState({ isUpdating: true })
             }}
-            //缩放结束执行
-            onResizeStop={(e, direction, ref, delta, position) => {
+            onResize={(e, direction, ref, delta, position) => {
+              console.log(delta, position)
               const canvas1 = this.canvas1.current
               const ctx1 = canvas1.getContext('2d')
-              ctx1.clearRect(this.state.x, this.state.y, this.state.width, this.state.height + 2);
+              const video = this.video.current
+              const height = this.state.whArray.pop()
+              const width = this.state.whArray.pop()
+              const y = this.state.xyArray.pop()
+              const x = this.state.xyArray.pop()
+              ctx1.clearRect(x, y, width, height + 2);
+              ctx1.drawImage(video, position.x, position.y, ref.offsetWidth, ref.offsetHeight);
+              ctx1.fillStyle = 'rgb(255,0,0)'
+              ctx1.fillRect(position.x, position.y + ref.offsetHeight, ref.offsetWidth, 2)
+              this.state.xyArray.push(position.x, position.y)
+              this.state.whArray.push(ref.offsetWidth, ref.offsetHeight)
+            }}
+            onResizeStop={(e, direction, ref, delta, position) => {
               this.setState({
+                x: position.x,
+                y: position.y,
                 width: ref.offsetWidth,
-                height: ref.offsetHeight
+                height: ref.offsetHeight,
+                isUpdating: false
               });
               this.computeFrame()
             }}
 
             enableResizing={true}
           >
-            <div id="rnd"></div>
           </Rnd>
         </div>
-        <Button id="button" variant="contained" onClick={this.showImage}>开始</Button>
+        <Button ref={this.button} id="button" variant="contained" onClick={this.showImage}>开始</Button>
       </div>
     )
   }
